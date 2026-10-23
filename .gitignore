@@ -1,0 +1,12 @@
+node_modules/
+.next/
+*.db
+*.db-wal
+*.db-shm
+.env.local
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+.DS_Store
+*.log

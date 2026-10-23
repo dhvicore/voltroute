@@ -1,0 +1,760 @@
+.vr-app {
+  --vr-mint: #96e8be;
+  --vr-border: rgba(255, 255, 255, 0.08);
+  background: #121c17;
+  color: #edf3ee;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  min-height: 100dvh;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+  isolation: isolate;
+}
+.vr-app *,
+.vr-dialog * {
+  box-sizing: border-box;
+}
+.vr-app button,
+.vr-dialog button {
+  touch-action: manipulation;
+}
+.vr-app button,
+.vr-app input,
+.vr-app select,
+.vr-dialog button,
+.vr-dialog input,
+.vr-dialog select {
+  font-family: inherit;
+}
+.vr-app button:focus-visible,
+.vr-app a:focus-visible,
+.vr-dialog button:focus-visible,
+.vr-dialog a:focus-visible {
+  outline: 2px solid #b3f7d2;
+  outline-offset: 4px;
+}
+.vr-app input:focus-visible,
+.vr-app select:focus-visible,
+.vr-dialog input:focus-visible,
+.vr-dialog select:focus-visible {
+  outline: 2px solid #96e8be;
+  outline-offset: 3px;
+}
+.vr-header {
+  position: relative;
+  z-index: 20;
+  height: 76px;
+  padding: 0 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--vr-border);
+  background: #152019;
+  gap: 24px;
+}
+.vr-nav-item {
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 17px;
+  color: #8c9c91;
+  white-space: nowrap;
+  font-size: 12px !important;
+  transition: color 0.2s;
+}
+.vr-nav-item:hover {
+  color: #e0f4e8;
+}
+.vr-nav-item.active {
+  color: #a2e8bf;
+}
+.vr-nav-item.active:after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: #96e8be;
+  border-radius: 2px;
+}
+.vr-workspace {
+  display: grid;
+  grid-template-columns: 376px minmax(0, 1fr);
+  height: calc(100dvh - 76px);
+  min-height: 700px;
+}
+.vr-sidebar {
+  padding: 24px 22px 20px;
+  background: linear-gradient(145deg, #17221b, #131e18);
+  border-right: 1px solid var(--vr-border);
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #35463b transparent;
+}
+.vr-panel {
+  border: 1px solid rgba(184, 218, 193, 0.12);
+  border-radius: 19px;
+  background: rgba(28, 41, 33, 0.88);
+  box-shadow: 0 8px 32px #00000012;
+  backdrop-filter: blur(24px);
+}
+.vr-primary {
+  min-height: 45px;
+  border-radius: 11px;
+  background: #96e8be;
+  color: #14291e;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 16px;
+  font-size: 12px !important;
+  font-weight: 650;
+  transition:
+    background 0.2s,
+    box-shadow 0.2s,
+    transform 0.2s;
+}
+.vr-primary:hover:not(:disabled) {
+  background: #b0f2ce;
+  box-shadow: 0 4px 24px #8be4b816;
+  transform: translateY(-1px);
+}
+.vr-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.vr-icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 11px;
+  color: #a5b5aa;
+  transition:
+    background 0.2s,
+    color 0.2s;
+  flex-shrink: 0;
+}
+.vr-icon-button:hover {
+  background: #ffffff08;
+  color: #c6f5d8;
+}
+.vr-range {
+  height: 4px;
+  appearance: none;
+  border-radius: 10px;
+  cursor: pointer;
+  display: block;
+}
+.vr-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  background: #b5f2cf;
+  border: 3px solid #203c2c;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #96e8be;
+}
+.vr-range::-moz-range-thumb {
+  width: 9px;
+  height: 9px;
+  background: #b5f2cf;
+  border: 3px solid #203c2c;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #96e8be;
+}
+.vr-map-workspace {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: #19231f;
+  overflow: hidden;
+}
+.vr-map {
+  background: #19231f;
+}
+.vr-map::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    #142019d9,
+    transparent 23%,
+    transparent 70%,
+    #111c1738
+  );
+}
+.vr-map-label {
+  position: absolute;
+  color: #82958a;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  font-weight: 550;
+  pointer-events: none;
+  white-space: nowrap;
+  text-shadow: 0 2px 5px #142019;
+}
+.vr-map-control {
+  height: 39px;
+  width: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b2c5b8;
+  transition: background 0.2s;
+}
+.vr-map-control:hover {
+  background: #ffffff08;
+}
+.vr-map-control:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+.vr-station-marker {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 12px;
+  background: #17271f;
+  border: 1px solid color-mix(in srgb, var(--marker-color) 45%, transparent);
+  padding: 6px 9px;
+  color: var(--marker-color);
+  box-shadow: 0 4px 18px #00000040;
+  transition:
+    box-shadow 0.2s,
+    background 0.2s;
+  min-height: 40px;
+  min-width: 50px;
+}
+.vr-station-marker:after {
+  content: "";
+  position: absolute;
+  left: 17px;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  transform: rotate(45deg);
+  background: #17271f;
+  border-right: 1px solid
+    color-mix(in srgb, var(--marker-color) 45%, transparent);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--marker-color) 45%, transparent);
+}
+.vr-station-marker:hover,
+.vr-station-marker.is-selected {
+  background: #294735;
+  box-shadow:
+    0 0 0 4px #8be4b815,
+    0 4px 18px #00000040;
+  z-index: 4;
+}
+.vr-marker-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.vr-marker-count {
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.vr-marker-label {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: #1c2e23f5;
+  border: 1px solid #96e8be38;
+  border-radius: 10px;
+  padding: 11px 13px;
+  box-shadow: 0 8px 20px #00000030;
+  text-align: left;
+  pointer-events: none;
+}
+.vr-station-marker.is-recommended {
+  background: #96e8be;
+  color: #143722;
+  border-color: #96e8be;
+  box-shadow:
+    0 0 0 6px #96e8be12,
+    0 6px 20px #00000040;
+}
+.vr-station-marker.is-recommended:after {
+  background: #96e8be;
+  border-color: #96e8be;
+}
+.vr-summary-position {
+  position: absolute;
+  bottom: 65px;
+  left: 26px;
+  width: min(495px, calc(100% - 52px));
+  z-index: 5;
+}
+.vr-route-summary {
+  background: #1a2921ed;
+  box-shadow: 0 12px 40px #07170e33;
+}
+.vr-timeline-node {
+  height: 25px;
+  width: 25px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #5a8a6b;
+  background: #1c2c22;
+  color: #a1d3b4;
+}
+.vr-map-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #ffffff06;
+  padding: 12px 24px;
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  color: #82988a;
+  background: #14201980;
+  backdrop-filter: blur(12px);
+}
+.vr-dialog {
+  color: #edf3ee;
+  background: #18231f;
+  border: 1px solid #a0c3ad26;
+  border-radius: 22px;
+  padding: 0;
+  width: min(500px, calc(100% - 32px));
+  max-height: 90dvh;
+  margin: auto;
+  box-shadow: 0 30px 100px #00000070;
+  color-scheme: dark;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  scrollbar-width: thin;
+  scrollbar-color: #35463b transparent;
+  overscroll-behavior: contain;
+}
+.vr-dialog::backdrop {
+  background: #070f0bb8;
+  backdrop-filter: blur(6px);
+}
+.vr-input {
+  height: 42px;
+  border: 1px solid #ffffff15;
+  border-radius: 10px;
+  padding: 10px;
+  background: #ffffff04;
+  color: #e1e9e4;
+  font-size: 11px !important;
+  min-width: 0;
+}
+.vr-input option {
+  background: #1c2a22;
+}
+.vr-skip-link {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 200;
+  transform: translateY(-160%);
+  background: #a4edc6;
+  color: #132b1e;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+}
+.vr-skip-link:focus {
+  transform: translateY(0);
+}
+@media (min-width: 1600px) {
+  .vr-workspace {
+    grid-template-columns: 408px minmax(0, 1fr);
+  }
+  .vr-sidebar {
+    padding: 28px;
+  }
+  .vr-summary-position {
+    width: 520px;
+    bottom: 75px;
+    left: 36px;
+  }
+}
+@media (max-width: 1200px) {
+  .vr-workspace {
+    grid-template-columns: 345px minmax(0, 1fr);
+  }
+  .vr-sidebar {
+    padding: 18px 16px;
+  }
+  .vr-header {
+    padding: 0 22px;
+  }
+  .vr-nav-item {
+    padding: 0 11px;
+  }
+  .vr-summary-position {
+    width: 440px;
+    left: 20px;
+    bottom: 75px;
+  }
+}
+@media (max-width: 1023px) {
+  .vr-header {
+    height: 68px;
+    padding: 0 20px;
+    gap: 16px;
+  }
+  .vr-workspace {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100dvh - 68px);
+  }
+  .vr-sidebar {
+    display: contents;
+  }
+  .vr-sidebar > section:first-child {
+    margin: 18px 18px 0;
+    order: 0;
+  }
+  .vr-sidebar > section:not(:first-child) {
+    order: 2;
+    margin: 24px 18px;
+  }
+  .vr-sidebar > section:not(:first-child) > div.space-y-3 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .vr-sidebar > section:not(:first-child) > div.space-y-3 > article {
+    margin-top: 0;
+  }
+  .vr-sidebar > footer {
+    order: 3;
+    margin: 0 18px 20px;
+  }
+  .vr-map-workspace {
+    order: 1;
+    margin: 18px;
+    border: 1px solid var(--vr-border);
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  .vr-map {
+    height: 500px;
+  }
+  .vr-summary-position {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    width: auto;
+    margin: 0 14px 54px;
+    z-index: 5;
+  }
+  .vr-map-label {
+    font-size: 10px;
+  }
+  .vr-map-caption {
+    padding: 12px 18px;
+  }
+  .vr-map-workspace > .vr-map {
+    margin-bottom: 14px;
+  }
+  .vr-nav-item span {
+    font-size: 11px;
+  }
+  .vr-nav-item {
+    padding: 0 10px;
+    gap: 6px;
+  }
+  .vr-marker-label {
+    padding: 8px 10px;
+  }
+  .vr-map::after {
+    background: linear-gradient(
+      180deg,
+      #142019d9,
+      transparent 25%,
+      transparent 70%,
+      #111c1738
+    );
+  }
+}
+@media (max-width: 600px) {
+  .vr-header {
+    padding: 0 14px;
+    gap: 8px;
+    height: 64px;
+  }
+  .vr-header > a > span:last-child {
+    font-size: 18px;
+  }
+  .vr-header > a > span:first-child {
+    width: 30px;
+    height: 32px;
+    border-radius: 9px;
+  }
+  .vr-header nav {
+    gap: 0;
+  }
+  .vr-nav-item {
+    padding: 0 10px;
+  }
+  .vr-nav-item > span:not(.rounded) {
+    display: none;
+  }
+  .vr-nav-item.active:after {
+    left: 9px;
+    right: 9px;
+  }
+  .vr-header > div {
+    gap: 5px;
+  }
+  .vr-header nav button {
+    min-width: 38px;
+  }
+  .vr-map {
+    height: 430px;
+  }
+  .vr-map > div:first-child {
+    inset: 0 -15px;
+  }
+  .vr-map-label {
+    font-size: 9px !important;
+    letter-spacing: 0.05em !important;
+  }
+  .vr-marker-label {
+    bottom: calc(100% + 10px);
+  }
+  .vr-marker-label > span:last-child {
+    font-size: 10px;
+  }
+  .vr-marker-label > span:last-child > span {
+    display: none;
+  }
+  .vr-marker-label > span:first-child {
+    font-size: 7px;
+  }
+  .vr-marker-count {
+    font-size: 9px;
+  }
+  .vr-station-marker {
+    padding: 5px 7px;
+    min-width: 42px;
+    min-height: 36px;
+    gap: 3px;
+  }
+  .vr-station-marker svg {
+    width: 14px;
+  }
+  .vr-map-workspace {
+    margin: 14px 12px;
+  }
+  .vr-sidebar > section:first-child {
+    margin: 14px 12px 0;
+  }
+  .vr-sidebar > section:not(:first-child) {
+    margin: 18px 12px;
+  }
+  .vr-sidebar > section:not(:first-child) > div.space-y-3 {
+    grid-template-columns: 1fr;
+  }
+  .vr-sidebar > footer {
+    margin: 0 14px 20px;
+  }
+  .vr-summary-position {
+    margin: 0 10px 54px;
+  }
+  .vr-summary-position .vr-panel > button {
+    padding: 16px;
+  }
+  .vr-dialog {
+    width: 100%;
+    max-width: 100vw;
+    max-height: 94dvh;
+    margin: auto 0 0;
+    border-radius: 22px 22px 0 0;
+    border-bottom: 0;
+  }
+  .vr-dialog > div > div > div.p-6 {
+    padding: 20px;
+  }
+  .vr-map-workspace .vr-map > div.right-5.bottom-4 {
+    right: 12px;
+  }
+  .vr-route-summary > div {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .vr-header nav button[aria-label] {
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vr-app *,
+  .vr-dialog * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* Keep utility typography and responsive visibility authoritative. */
+.vr-app button,
+.vr-app input,
+.vr-app select,
+.vr-dialog button,
+.vr-dialog input,
+.vr-dialog select {
+  font-family: inherit;
+}
+.vr-app .text-slate-500,
+.vr-dialog .text-slate-500 {
+  color: #8a9c90;
+}
+.vr-map > div:not(:first-child),
+.vr-map > button {
+  z-index: 3;
+}
+@media (min-width: 1024px) {
+  .vr-app button[aria-controls="route-inputs"] {
+    display: none;
+  }
+}
+@media (max-width: 639px) {
+  .vr-header button[aria-label="About this preview"] {
+    display: none;
+  }
+}
+
+/* Refined surfaces and a restrained perspective system. */
+.vr-app {
+  --vr-mint: #a4e2c3;
+  --vr-border: rgba(214, 232, 222, .075);
+  background: #101614;
+  color: #eef3f0;
+}
+.vr-header { height: 70px; background: #111916; padding-inline: 28px; }
+.vr-workspace { height: calc(100dvh - 70px); grid-template-columns: 364px minmax(0, 1fr); }
+.vr-sidebar { padding: 24px 20px; background: #121b17; scrollbar-width: thin; }
+.vr-nav-item { font-size: 12px !important; }
+.vr-nav-item.active:after { left: 18px; right: 18px; height: 2px; }
+.vr-panel {
+  border-color: rgba(200, 225, 212, .1);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(31, 43, 36, .94), rgba(23, 34, 28, .96));
+  box-shadow: 0 1px 0 #ffffff04 inset, 0 12px 28px #050d0820;
+}
+.vr-route-panel { animation: vr-surface-enter .55s cubic-bezier(.2,.7,.2,1) both; }
+.vr-route-panel > div:nth-child(2) { padding: 20px; }
+.vr-route-panel > div:nth-child(2) > div:first-child { position: relative; min-height: 66px; margin-bottom: 18px; }
+.vr-route-panel h1 { font-size: 22px; font-weight: 550; letter-spacing: -.8px; }
+.vr-route-panel h1 + p { max-width: 205px; line-height: 1.6; font-size: 11px; }
+.vr-panel-sculpture { position: absolute; right: 0; top: -10px; pointer-events: none; }
+.vr-route-panel fieldset legend { margin-bottom: 10px; }
+.vr-route-panel fieldset button { min-height: 38px; padding-block: 10px; }
+.vr-route-panel fieldset label { padding: 11px; border-radius: 10px; }
+.vr-route-panel fieldset label span span:nth-child(2) { font-size: 10px; }
+.vr-primary { background: #a4e2c3; border-radius: 10px; min-height: 44px; box-shadow: 0 1px 0 #d9f9e670 inset, 0 3px 0 #426c5330; }
+.vr-primary:hover:not(:disabled) { background: #b7ebd0; box-shadow: 0 1px 0 #e7fff270 inset, 0 7px 16px #00000025; transform: translateY(-2px); }
+.vr-primary:active:not(:disabled) { transform: translateY(0); }
+.vr-depth-card { position: relative; transform-style: preserve-3d; }
+.vr-depth-card > *:not(.vr-depth-shine) { position: relative; }
+.vr-depth-shine { position: absolute; z-index: 2; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .35s; }
+.vr-depth-card:hover > .vr-depth-shine { opacity: 1; }
+.vr-station-card { border-radius: 13px; background: #17221c; box-shadow: 0 1px 0 #ffffff03 inset; }
+.vr-station-card:hover { box-shadow: 0 12px 25px #00000028, 0 1px 0 #a4e2c315 inset; }
+.vr-station-card h3 { font-size: 13px; font-weight: 550; }
+.vr-route-summary { background: linear-gradient(140deg, #23332bd9, #18271fec); box-shadow: 0 20px 55px #030c0838, 0 1px 0 #e3f9ec09 inset; }
+.vr-route-summary > button > span:first-child > span:first-child { height: 34px; width: 34px; border-radius: 10px; }
+.vr-route-metrics { animation: vr-metrics-enter .4s ease both; }
+.vr-summary-position { bottom: 64px; width: min(460px, calc(100% - 48px)); left: 24px; perspective: 1100px; }
+.vr-map { perspective: 1400px; }
+.vr-map-scene { transform-origin: 52% 47%; transform: scale(var(--map-zoom)); transform-style: preserve-3d; transition: transform .85s cubic-bezier(.2,.7,.2,1); }
+.vr-map[data-perspective="true"] .vr-map-scene { transform: rotateX(13deg) rotateZ(-3deg) scale(var(--map-zoom)); }
+.vr-map-scene > svg { transform: translateZ(0); }
+.vr-map[data-perspective="true"] .vr-station-marker { transform: translate3d(-50%, -100%, 24px); box-shadow: 5px 11px 0 -5px #09150cc9, 0 18px 22px #00000035, 0 1px 0 #f3fff233 inset; }
+.vr-map[data-perspective="true"] .vr-station-marker:hover { transform: translate3d(-50%, -100%, 36px); box-shadow: 5px 17px 0 -5px #09150c99, 0 25px 25px #00000040, 0 1px 0 #f3fff233 inset; }
+.vr-station-marker { border-radius: 10px; transition: transform .3s ease, box-shadow .3s ease, background .2s ease; }
+.vr-station-marker.is-recommended { background: #a4e2c3; border-color: #a4e2c3; }
+.vr-station-marker.is-recommended:after { background: #a4e2c3; }
+.vr-marker-label { background: #18291ff5; box-shadow: 0 12px 20px #0000002b; border-color: #a4e2c32e; padding: 10px 12px; }
+.vr-perspective-toggle[aria-pressed="true"] { color: #b5ead0; border-color: #a4e2c350; box-shadow: 0 1px 0 #a4e2c315 inset; }
+.vr-perspective-toggle:disabled { opacity: .4; cursor: not-allowed; }
+.vr-route-flow { animation: vr-route-flow 22s linear infinite; }
+.vr-map-caption { background: #111d1680; font-size: 9px; }
+.vr-dialog[open] { animation: vr-dialog-enter .32s cubic-bezier(.2,.7,.2,1) both; }
+.vr-dialog::backdrop { animation: vr-backdrop-enter .25s ease both; }
+.vr-sculpture { position: relative; display: block; width: 75px; height: 82px; perspective: 300px; }
+.vr-sculpture-floor { position: absolute; left: 6px; bottom: -1px; height: 35px; width: 69px; border: 1px solid #a4e2c318; border-radius: 50%; background: radial-gradient(ellipse, #86c9a81a, transparent 70%); transform: rotateX(58deg); }
+.vr-charger-model { position: absolute; left: 20px; top: 5px; width: 31px; height: 62px; transform: rotateX(-8deg) rotateY(-28deg); transform-style: preserve-3d; animation: vr-charger-float 6s ease-in-out infinite; }
+.vr-charger-front { position: absolute; inset: 0; border: 1px solid #badcc5a6; border-radius: 4px 4px 3px 3px; background: linear-gradient(120deg, #c0dbc9, #7da78d); box-shadow: 1px 0 0 #f0fff34a inset; transform: translateZ(8px); }
+.vr-charger-side { position: absolute; left: 0; top: 0; width: 16px; height: 62px; background: linear-gradient(90deg, #537963, #365641); border-radius: 3px; transform: translateX(23px) rotateY(90deg); }
+.vr-charger-top { position: absolute; left: 0; top: 0; width: 31px; height: 16px; border-radius: 3px; background: #e2f3e7; transform: translateY(-8px) rotateX(90deg); }
+.vr-charger-screen { position: absolute; top: 10px; left: 6px; right: 6px; height: 21px; display: flex; align-items: center; justify-content: center; border: 1px solid #b7f3d040; border-radius: 2px; background: #1b3928; color: #b7f3d0; }
+.vr-charger-led { position: absolute; left: 12px; top: 36px; width: 5px; height: 2px; border-radius: 3px; background: #e1f8eb; }
+.vr-charger-base { position: absolute; bottom: 0; left: 0; right: 0; height: 7px; background: #2f4a39; border-radius: 0 0 2px 2px; }
+.vr-charger-cable { position: absolute; left: 30px; top: 5px; width: 28px; height: 54px; transform: translateZ(-2px); }
+@keyframes vr-surface-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes vr-metrics-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes vr-dialog-enter { from { opacity: 0; transform: perspective(1100px) translateY(18px) rotateX(3deg); } to { opacity: 1; transform: perspective(1100px) translateY(0) rotateX(0); } }
+@keyframes vr-backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes vr-charger-float { 0%,100% { transform: translateY(0) rotateX(-8deg) rotateY(-28deg); } 50% { transform: translateY(-4px) rotateX(-8deg) rotateY(-24deg); } }
+@keyframes vr-route-flow { to { stroke-dashoffset: -1000; } }
+@media (min-width: 1600px) { .vr-workspace { grid-template-columns: 384px minmax(0,1fr); } .vr-sidebar { padding: 26px; } }
+@media (max-width: 1200px) and (min-width: 1024px) { .vr-workspace { grid-template-columns: 342px minmax(0,1fr); } .vr-sidebar { padding: 18px 16px; } }
+@media (max-width: 1023px) {
+  .vr-header { height: 66px; padding-inline: 18px; }
+  .vr-workspace { height: auto; }
+  .vr-summary-position { position: relative; width: auto; left: auto; bottom: auto; margin: 0 14px 52px; }
+  .vr-panel-sculpture { right: 48px; }
+  .vr-map[data-perspective="true"] .vr-map-scene { transform: rotateX(8deg) rotateZ(-2deg) scale(var(--map-zoom)); }
+  .vr-route-panel > div:nth-child(2) > div:first-child { min-height: 62px; }
+}
+@media (max-width: 600px) {
+  .vr-header { height: 64px; padding-inline: 14px; }
+  .vr-route-panel > div:nth-child(2) { padding: 18px; }
+  .vr-route-panel h1 { font-size: 21px; }
+  .vr-route-panel h1 + p { max-width: 180px; }
+  .vr-panel-sculpture { right: 29px; transform: scale(.82); transform-origin: center; }
+  .vr-summary-position { margin: 0 10px 52px; }
+  .vr-map-caption { padding-inline: 16px; }
+}
+@media (hover: none) { .vr-depth-shine { display: none; } .vr-station-card:hover { box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .vr-app *, .vr-dialog *, .vr-dialog[open], .vr-dialog::backdrop { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .vr-charger-model { transform: rotateX(-8deg) rotateY(-28deg); }
+  .vr-route-flow { display: none; }
+}
+.vr-route-panel .vr-route-preference > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.vr-route-panel .vr-route-preference > div > label { min-height: 46px; margin-top: 0; padding: 10px; gap: 7px; }
+.vr-route-panel .vr-route-preference > div > label > svg { display: none; }
+.vr-route-panel .vr-route-preference > div > label > span > span:first-child { font-size: 10px; white-space: nowrap; }
+.vr-route-panel .vr-route-preference > div > label > span > span:nth-child(2) { display: none; }
+@media (min-width: 1024px) { .vr-workspace { min-height: 0; } }
