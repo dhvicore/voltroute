@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import { VoltRoutePlanner } from "@/components/planner/volt-route-planner";
-
+export const dynamic = "force-dynamic";
+import { LandingPage } from "@/components/site/landing-page";
 export const metadata: Metadata = {
   title: "VoltRoute — A little charge. A lot of possibility.",
-  description:
-    "Plan a charging-friendly journey, discover compatible EV stations, and reserve your next charging stop.",
+  description: "Plan electric journeys and discover your next charging stop.",
 };
-
 export default function Home() {
-  return <VoltRoutePlanner />;
+  return <LandingPage />;
 }

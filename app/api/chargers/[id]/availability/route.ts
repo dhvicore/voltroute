@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { sampleBusySlots, usesSampleSchedule } from "@/lib/sample-availability";
 import { ensureInit } from "@/lib/init";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -21,13 +22,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       ORDER BY start_time ASC
     `).all(params.id, date);
 
+    const station = db.prepare("SELECT chargers_estimated, operator_verified, live_source FROM stations WHERE id = ?").get(charger.station_id) as { chargers_estimated: number; operator_verified: number; live_source: string | null };
+    const sample = station && usesSampleSchedule(station);
     return NextResponse.json({
       charger_id: charger.id,
       status: charger.status,
       connector_type: charger.connector_type,
       power_kw: charger.power_kw,
       date,
-      booked_slots: bookings,
+      sample_schedule: !!sample,
+      booked_slots: [...bookings, ...(sample ? sampleBusySlots(charger.id, date) : [])],
     });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

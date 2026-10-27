@@ -15,11 +15,14 @@ import {
   Leaf,
   Route,
   SlidersHorizontal,
-  Zap,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme/theme-provider";
+import { NotificationBell } from "@/components/workspace/notification-bell";
 import { BookingDrawer } from "./booking-drawer";
 import { Dialog } from "./dialog";
 import { buildDemoRoute, defaultInput, demoStations, money } from "./demo-data";
+import { defaultEvModel } from "./ev-models";
+import { applyBookedStop } from "./replan";
 import { RouteMap } from "./route-map";
 import { RoutePanel } from "./route-panel";
 import { RouteSummary } from "./route-summary";
@@ -33,6 +36,14 @@ import type {
 } from "./types";
 
 const emptyAdapters: PlannerAdapters = {};
+function savedBattery(carId: string) {
+  try {
+    const v = Number(localStorage.getItem(`voltroute-battery-${carId}`));
+    return v >= 5 && v <= 100 ? v : null;
+  } catch {
+    return null;
+  }
+}
 const storageKey = "voltroute-planner-v1";
 
 export function VoltRoutePlanner({
@@ -40,8 +51,36 @@ export function VoltRoutePlanner({
 }: {
   adapters?: PlannerAdapters;
 }) {
-  const [input, setInput] = useState<RouteInput>(defaultInput);
-  const [appliedInput, setAppliedInput] = useState<RouteInput>(defaultInput);
+  // The live planner starts empty so drivers choose their own trip.
+  const startInput = adapters.calculateRoute
+    ? { ...defaultInput, source: "", destination: "" }
+    : defaultInput;
+  const [input, setInput] = useState<RouteInput>(startInput);
+  const [appliedInput, setAppliedInput] = useState<RouteInput>(startInput);
+  const cars = adapters.cars;
+  const car = cars?.find((c) => c.id === input.vehicle) || cars?.[0] || defaultEvModel;
+  // Start with the car the driver used last on this device, if it's still theirs.
+  useEffect(() => {
+    if (!cars?.length) return;
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem("voltroute-ev");
+    } catch {}
+    const model = cars.find((c) => c.id === saved) || cars[0];
+    setInput((i) => ({ ...i, vehicle: model.id, connector: model.connector, battery: savedBattery(model.id) ?? i.battery }));
+  }, [cars]);
+  // Each car keeps the battery level the driver last entered for it.
+  useEffect(() => {
+    if (!input.vehicle || !cars?.length) return;
+    try {
+      localStorage.setItem(`voltroute-battery-${input.vehicle}`, String(input.battery));
+    } catch {}
+  }, [input.vehicle, input.battery, cars]);
+  useEffect(() => {
+    try {
+      if (input.vehicle) localStorage.setItem("voltroute-ev", input.vehicle);
+    } catch {}
+  }, [input.vehicle]);
   const [route, setRoute] = useState<PlannedRoute | null>(() =>
     adapters.calculateRoute ? null : buildDemoRoute(defaultInput),
   );
@@ -60,6 +99,13 @@ export function VoltRoutePlanner({
     null,
   );
   const [toast, setToast] = useState<string | null>(null);
+  const [bookedStops, setBookedStops] = useState<NonNullable<RouteInput["bookedStops"]>>([]);
+  const [savedBookings, setSavedBookings] = useState<Booking[] | null>(null);
+  useEffect(() => {
+    if (dialog !== "bookings" || !adapters.listBookings) return;
+    adapters.listBookings().then(setSavedBookings).catch(() => setSavedBookings(null));
+  }, [dialog, adapters.listBookings]);
+  const shownBookings = adapters.listBookings ? savedBookings ?? [] : bookings;
   const MapComponent = adapters.MapComponent || RouteMap;
   useEffect(() => {
     const compactDesktop = window.matchMedia("(min-width: 1024px) and (max-height: 820px)");
@@ -151,15 +197,27 @@ export function VoltRoutePlanner({
     setLoading(true);
     setError(null);
     try {
+      // A new search starts a fresh trip with no booked stops.
+      setBookedStops([]);
       const nextRoute = adapters.calculateRoute
-        ? await adapters.calculateRoute(input)
+        ? await adapters.calculateRoute({
+            ...input,
+            car: {
+              name: car.name,
+              batteryKwh: car.batteryKwh,
+              rangeKm: car.rangeKm,
+              maxDcKw: car.maxDcKw,
+              maxAcKw: car.maxAcKw,
+            },
+          })
         : buildDemoRoute(input);
       setRoute(nextRoute);
+      if (nextRoute.warning) setError(nextRoute.warning);
       setAppliedInput({ ...input });
       setSummaryExpanded(true);
       setActiveView("planner");
       if (window.matchMedia("(max-width: 1023px)").matches) setExpanded(false);
-      setToast(
+      if (!nextRoute.warning) setToast(
         mode === "route"
           ? "Your journey is ready to explore."
           : "Compatible chargers are ready to explore.",
@@ -186,9 +244,7 @@ export function VoltRoutePlanner({
             aria-label="VoltRoute home"
             className="flex shrink-0 items-center gap-2.5"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#96e8be] text-[#132b20]">
-              <Zap size={22} fill="currentColor" strokeWidth={1.5} />
-            </span>
+            <img src="/logo.png" alt="" width={38} height={38} className="h-[38px] w-[38px] shrink-0" />
             <span className="text-[21px] font-semibold tracking-[-.8px]">
               Volt<span className="font-normal text-[#a2e5be]">Route</span>
             </span>
@@ -239,17 +295,21 @@ export function VoltRoutePlanner({
             </button>
           </nav>
           <div className="flex items-center gap-3">
+            <NotificationBell />
+            <ThemeToggle compact/>
+            {!!cars?.length && (
             <button
               onClick={() => setDialog("vehicle")}
               className="hidden items-center gap-2.5 rounded-xl border border-white/[.08] px-3 py-2 text-xs text-slate-300 xl:flex"
             >
               <CarFront size={17} className="text-slate-400" />
-              My EV
+              {car.name.split(" · ")[0]}
               <span className="mx-1 h-3 border-l border-white/10" />
               <BatteryMedium size={15} className="text-emerald-300" />
               <span className="text-emerald-300">{input.battery}%</span>
               <ChevronDown size={12} />
             </button>
+            )}
             <button
               className="vr-icon-button hidden sm:flex"
               aria-label="About this preview"
@@ -269,6 +329,7 @@ export function VoltRoutePlanner({
         <div className="vr-workspace">
           <aside className="vr-sidebar" aria-label="Route and station controls">
             <RoutePanel
+              cars={cars}
               input={input}
               onChange={setInput}
               onSubmit={calculate}
@@ -414,7 +475,34 @@ export function VoltRoutePlanner({
             bookings={bookings}
             adapters={adapters}
             onClose={() => setSelected(null)}
-            onBooked={(booking) => setBookings((items) => [...items, booking])}
+            suggestedMinutes={route?.stops.find((st) => st.stationId === selected.id)?.minutes}
+            car={adapters.cars?.length ? car : undefined}
+            arrivalBattery={route?.stops.find((st) => st.stationId === selected.id)?.batteryOnArrival}
+            onBooked={(booking) => {
+              setBookings((items) => [...items, booking]);
+              const nextBooked = [
+                ...bookedStops.filter((b) => b.stationId !== booking.stationId),
+                { stationId: booking.stationId, chargerId: booking.chargerId, minutes: booking.durationMinutes },
+              ];
+              setBookedStops(nextBooked);
+              // Quick local update, then the server re-plans the whole trip around the booking.
+              setRoute((r) => (r ? applyBookedStop(r, booking) : r));
+              if (adapters.calculateRoute)
+                adapters
+                  .calculateRoute({
+                    ...appliedInput,
+                    bookedStops: nextBooked,
+                    car: {
+                      name: car.name,
+                      batteryKwh: car.batteryKwh,
+                      rangeKm: car.rangeKm,
+                      maxDcKw: car.maxDcKw,
+                      maxAcKw: car.maxAcKw,
+                    },
+                  })
+                  .then((r) => setRoute(r))
+                  .catch(() => {});
+            }}
           />
         )}
         {dialog === "bookings" && (
@@ -426,7 +514,7 @@ export function VoltRoutePlanner({
               <p className="mb-6 mt-2 text-xs text-slate-400">
                 A little planning. A smoother journey.
               </p>
-              {bookings.length === 0 ? (
+              {shownBookings.length === 0 ? (
                 <div className="py-10 text-center">
                   <CalendarDays
                     size={36}
@@ -448,14 +536,14 @@ export function VoltRoutePlanner({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {[...bookings].reverse().map((booking) => (
+                  {(adapters.listBookings ? shownBookings : [...shownBookings].reverse()).map((booking) => (
                     <article
                       key={booking.id}
                       className="rounded-2xl border border-white/10 p-4"
                     >
                       <div className="mb-3 flex items-center justify-between">
                         <span className="text-[9px] uppercase tracking-widest text-emerald-300">
-                          {booking.isDemo ? "Demo booking" : "Confirmed"}
+                          {booking.isDemo ? "Demo booking" : booking.status || "Request sent"}
                         </span>
                         <Check size={14} className="text-emerald-300" />
                       </div>
@@ -498,8 +586,9 @@ export function VoltRoutePlanner({
                   <span className="font-medium text-emerald-200">
                     Plan your way.
                   </span>{" "}
-                  Try Mumbai to Pune, or swap the cities for the return trip.
-                  Compare charging-friendly and faster routes.
+                  Enter any start and destination in India, such as Indore to
+                  Mumbai. The first search for a new route can take up to a
+                  minute while we look up chargers along the way.
                 </p>
                 <p>
                   <span className="font-medium text-emerald-200">
@@ -512,9 +601,9 @@ export function VoltRoutePlanner({
                   <span className="font-medium text-emerald-200">
                     Explore freely.
                   </span>{" "}
-                  This demo uses illustrative maps, prices, and station
-                  availability. Demo bookings are saved on this device and do
-                  not reserve a real charging slot.
+                  Routes and stations come from OpenStreetMap; prices are
+                  estimates until the station operator confirms them. Log in to
+                  book a slot the station can see.
                 </p>
               </div>
               <button
@@ -537,8 +626,12 @@ export function VoltRoutePlanner({
                 Ready for what’s next.
               </h2>
               <p className="mt-2 text-sm text-slate-400">
-                Your preview EV uses a 50 kWh battery and an estimated full
-                range of 320 km.
+                {car.name}: {car.batteryKwh} kWh battery, about {car.rangeKm} km
+                real-world range on a full charge
+                {car.maxDcKw ? `, charges at up to ${car.maxDcKw} kW DC` : ", AC charging only"}.
+                {cars?.length
+                  ? "Switch cars under “Your EV”, or add more in My account."
+                  : "Add your own car in My account to plan with its real range."}
               </p>
               <dl className="my-6 grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-white/10 p-4">
@@ -556,6 +649,12 @@ export function VoltRoutePlanner({
                 onClick={() => {
                   setDialog(null);
                   setExpanded(true);
+                  // Wait for the dialog to close and the panel to open, then bring the car picker into view.
+                  setTimeout(() => {
+                    const picker = document.getElementById("ev-model");
+                    picker?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    picker?.focus({ preventScroll: true });
+                  }, 250);
                 }}
                 className="vr-primary w-full"
               >
@@ -564,9 +663,9 @@ export function VoltRoutePlanner({
               </button>
               <a
                 className="mt-5 flex items-center justify-center gap-2 text-xs text-slate-400 hover:text-emerald-300"
-                href="/legacy"
+                href="/profile"
               >
-                Open original app & account
+                My account
                 <ArrowUpRight size={13} />
               </a>
             </div>

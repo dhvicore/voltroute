@@ -5,7 +5,7 @@ export const voltrouteMarkup = String.raw`
 
 <!-- NAVBAR -->
 <nav id="navbar" class="glass">
-  <div class="brand" onclick="go('landing')"><div class="bolt"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0"><path d="m13 2-9 12h7l-1 8 10-12h-7l1-8Z"/></svg></div>VoltRoute</div>
+  <div class="brand" onclick="go('landing')"><img src="/logo.png" alt="" width="34" height="34" style="border-radius:50%;margin-right:8px;vertical-align:middle">VoltRoute</div>
   <div class="nav-links" id="navlinks"></div>
   <div class="nav-right">
     <div class="icon-btn" onclick="go('bookings')"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span class="dot-badge"></span></div>

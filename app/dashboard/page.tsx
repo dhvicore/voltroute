@@ -1,5 +1,4 @@
-import { VoltRoutePlanner } from "@/components/planner/volt-route-planner";
-
-export default function DashboardPage() {
-  return <VoltRoutePlanner />;
+import { AccountPage } from "@/components/workspace/account-page";
+export default function Dashboard() {
+  return <AccountPage />;
 }

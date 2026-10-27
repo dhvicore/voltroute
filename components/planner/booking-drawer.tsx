@@ -17,9 +17,11 @@ import {
   Wifi,
   Zap,
 } from "lucide-react";
+import { sampleBusySlots } from "@/lib/sample-availability";
+import { StationFeedback } from "./station-feedback";
 import { Dialog } from "./dialog";
+import { EstimateTag, estimateText } from "./estimate-tag";
 import {
-  availabilityLabel,
   availabilityStyle,
   localDate,
   money,
@@ -39,6 +41,12 @@ interface Props {
   adapters: PlannerAdapters;
   onClose: () => void;
   onBooked: (booking: Booking) => void;
+  /** The planner's suggested charging time at this stop, if it's a recommended stop. */
+  suggestedMinutes?: number;
+  /** The driver's car, so cost reflects what it can actually take. */
+  car?: { id?: string; batteryKwh: number; maxDcKw: number; maxAcKw: number };
+  /** Battery % expected on arrival at this station. */
+  arrivalBattery?: number;
 }
 const minutes = (time: string) =>
   Number(time.split(":")[0]) * 60 + Number(time.split(":")[1]);
@@ -63,6 +71,9 @@ export function BookingDrawer({
   adapters,
   onClose,
   onBooked,
+  suggestedMinutes,
+  car,
+  arrivalBattery,
 }: Props) {
   const [chargerId, setChargerId] = useState(
     station.chargers.find((c) => c.connector === connector && c.available)
@@ -71,13 +82,19 @@ export function BookingDrawer({
       station.chargers[0].id,
   );
   const [date, setDate] = useState(tomorrow);
-  const [duration, setDuration] = useState(30);
+  // Start from the planner's suggested charging time for this stop.
+  const [duration, setDuration] = useState(() => {
+    const options = [10, 15, 20, 30, 45, 60, 90, 120];
+    return options.find((o) => o >= (suggestedMinutes || 30)) || 120;
+  });
   const [slot, setSlot] = useState<string | null>(null);
+  // Booked times for every charger at this station on the chosen date.
   const [remoteSlots, setRemoteSlots] = useState<
-    { startTime: string; durationMinutes: number }[]
-  >([]);
+    Record<string, { startTime: string; durationMinutes: number }[]>
+  >({});
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [availabilityError, setAvailabilityError] = useState<string | null>(
     null,
   );
@@ -86,23 +103,32 @@ export function BookingDrawer({
   const reduceMotion = useReducedMotion();
   const charger = station.chargers.find((c) => c.id === chargerId)!;
   const isDemo = !adapters.bookSlot;
-  const energy = (charger.power * duration) / 60;
+  // Energy is limited by the slower of charger and car, and by how much the battery can still take.
+  const carKw = car ? (charger.connector === "Type 2" ? car.maxAcKw : car.maxDcKw || car.maxAcKw) : charger.power;
+  const roomKwh = car ? ((100 - (arrivalBattery ?? 20)) / 100) * car.batteryKwh : Infinity;
+  // Shown and charged amounts come from the same maths as the server.
+  const energy = Math.min((Math.min(charger.power, carKw) * duration) / 60, roomKwh);
   const total =
     Math.round((energy * charger.price + charger.sessionFee) * 100) / 100;
   useEffect(() => {
     setSlot(null);
     setAvailabilityError(null);
-    setRemoteSlots([]);
+    setRemoteSlots({});
     if (!adapters.getBookedSlots || !date) {
       setLoadingSlots(false);
       return;
     }
     const controller = new AbortController();
     setLoadingSlots(true);
-    adapters
-      .getBookedSlots(chargerId, date, controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) setRemoteSlots(data);
+    Promise.all(
+      station.chargers.map((c) =>
+        adapters.getBookedSlots!(c.id, date, controller.signal).then(
+          (slots) => [c.id, slots] as const,
+        ),
+      ),
+    )
+      .then((entries) => {
+        if (!controller.signal.aborted) setRemoteSlots(Object.fromEntries(entries));
       })
       .catch((err) => {
         if (!controller.signal.aborted)
@@ -116,32 +142,27 @@ export function BookingDrawer({
         if (!controller.signal.aborted) setLoadingSlots(false);
       });
     return () => controller.abort();
-  }, [chargerId, date, adapters.getBookedSlots]);
-  const bookedSlots = useMemo(
-    () => [
-      ...(!adapters.getBookedSlots
-        ? [
-            { startTime: "10:00", durationMinutes: 60 },
-            { startTime: "13:00", durationMinutes: 60 },
-            { startTime: "17:00", durationMinutes: 60 },
-          ]
-        : remoteSlots),
-      ...bookings.filter((b) => b.chargerId === chargerId && b.date === date),
-    ],
-    [adapters.getBookedSlots, remoteSlots, bookings, chargerId, date],
+  }, [station.chargers, date, adapters.getBookedSlots, retryKey]);
+  const slotsFor = (id: string) => [
+    ...(!adapters.getBookedSlots
+      ? sampleBusySlots(id, date).map((slot) => ({ startTime: slot.start_time, durationMinutes: slot.duration_minutes }))
+      : remoteSlots[id] || []),
+    ...bookings.filter((b) => b.chargerId === id && b.date === date),
+  ];
+  const isFree = (id: string, time: string) =>
+    !slotsFor(id).some((b) => overlaps(time, duration, b.startTime, b.durationMinutes));
+  // Chargers the driver can use: same connector as the one they picked, not out of service.
+  const group = station.chargers.filter(
+    (c) => c.available && c.connector === charger.connector,
   );
+  const freeAt = (time: string) => group.filter((c) => isFree(c.id, time));
   const unavailableReason = (time: string) => {
-    if (!charger.available || station.availability === "full")
-      return "Unavailable";
+    // "Full" means busy right now; future slots can still be requested.
+    if (group.length === 0) return "Unavailable";
     if (new Date(`${date}T${time}:00`).getTime() <= Date.now())
       return "Past slot";
     if (minutes(time) + duration > 21 * 60) return "After closing";
-    if (
-      bookedSlots.some((b) =>
-        overlaps(time, duration, b.startTime, b.durationMinutes),
-      )
-    )
-      return "Booked";
+    if (freeAt(time).length === 0) return "Full";
     return null;
   };
   async function confirm() {
@@ -160,6 +181,8 @@ export function BookingDrawer({
       startTime: slot,
       durationMinutes: duration,
       estimatedCost: total,
+      vehicleId: car?.id,
+      arrivalBattery: arrivalBattery ?? 20,
     };
     try {
       const result = adapters.bookSlot
@@ -202,7 +225,7 @@ export function BookingDrawer({
             <p className="mb-2 text-[10px] font-medium uppercase tracking-[.2em] text-emerald-300">
               {confirmed.isDemo
                 ? "Demo reservation saved"
-                : "Booking confirmed"}
+                : "Request sent to the station"}
             </p>
             <h3 className="text-3xl font-semibold tracking-tight">
               A spot for your next stop.
@@ -210,7 +233,7 @@ export function BookingDrawer({
             <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-slate-400">
               {confirmed.isDemo
                 ? "Your preview booking is saved on this device. No real charging slot has been reserved."
-                : "Your charging slot is reserved. You’re ready for the road ahead."}
+                : "Your slot is held while the station reviews your request. You’ll see their answer in My bookings."}
             </p>
             <div className="my-7 rounded-2xl border border-white/10 bg-white/[.02] p-5 text-left">
               <p className="text-sm font-medium">{station.name}</p>
@@ -229,7 +252,10 @@ export function BookingDrawer({
                 Reference {confirmed.id}
               </p>
             </div>
-            <button onClick={onClose} className="vr-primary w-full">
+            <p className="mb-5 text-xs text-slate-400">
+              No payment is needed now. After the station accepts, choose when to pay in My bookings, or pay cash at the station.
+            </p>
+            <button onClick={onClose} className="vr-secondary-button w-full">
               Back to the journey
               <ArrowRight size={16} className="ml-auto" />
             </button>
@@ -244,8 +270,10 @@ export function BookingDrawer({
                 className={`relative inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-medium ${availabilityStyle[station.availability]}`}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                {availabilityLabel[station.availability]} · {station.available}{" "}
-                of {station.total} chargers
+                {station.available} of {station.total} chargers free right now
+                {station.estimates?.availability && (
+                  <EstimateTag title={estimateText.availability} label="Estimated" />
+                )}
               </span>
               <h3 className="relative mt-4 text-[26px] font-semibold leading-tight tracking-tight">
                 {station.name}
@@ -258,15 +286,21 @@ export function BookingDrawer({
                 {station.address}
               </div>
               <div className="relative mt-3 flex items-center gap-1.5 text-xs">
-                <Star
-                  size={12}
-                  className="text-amber-200"
-                  fill="currentColor"
-                />
-                {station.rating}
-                <span className="text-slate-500">
-                  ({station.reviews} reviews)
-                </span>
+                {station.reviews > 0 ? (
+                  <>
+                    <Star
+                      size={12}
+                      className="text-amber-200"
+                      fill="currentColor"
+                    />
+                    {station.rating}
+                    <span className="text-slate-500">
+                      ({station.reviews} review{station.reviews === 1 ? "" : "s"})
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-slate-500">No reviews yet</span>
+                )}
                 <span className="mx-2 text-slate-600">·</span>
                 <Clock3 size={12} className="text-slate-400" />
                 <span className="text-slate-400">
@@ -292,11 +326,20 @@ export function BookingDrawer({
               </div>
             </div>
             <div className="space-y-6 p-6">
+              <StationFeedback key={station.id} stationId={station.id} />
               <p className="flex items-start gap-2 rounded-xl bg-emerald-300/[.06] p-3 text-[11px] leading-relaxed text-emerald-200">
                 <ShieldCheck size={15} className="mt-0.5 shrink-0" />
                 {isDemo
                   ? "Demo availability and pricing. Explore the booking flow without making a real reservation."
-                  : "Availability is checked for your selected date. Final pricing is confirmed by the operator."}
+                  : station.estimates
+                    ? `Items marked “Est.” are VoltRoute estimates: ${[
+                        station.estimates.price && "prices",
+                        station.estimates.chargers && "charger types and power",
+                        station.estimates.availability && "availability (sample schedules and VoltRoute bookings)",
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}. Your time slot is reserved; the station confirms the final details.`
+                    : "Availability is checked for your selected date. Final pricing is confirmed by the operator."}
               </p>
               <fieldset>
                 <legend className="mb-3 text-sm font-medium">
@@ -308,10 +351,12 @@ export function BookingDrawer({
                       key={c.id}
                       type="button"
                       aria-pressed={chargerId === c.id}
-                      disabled={!c.available}
+                      disabled={!c.available || (!!slot && !isFree(c.id, slot))}
+                      title={slot && !isFree(c.id, slot) ? `Booked at ${slot}` : undefined}
                       onClick={() => {
                         setChargerId(c.id);
-                        setSlot(null);
+                        // Keep the chosen time only if this charger is free then.
+                        if (slot && !isFree(c.id, slot)) setSlot(null);
                       }}
                       className={`rounded-xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${chargerId === c.id ? "border-emerald-300/50 bg-emerald-300/[.06]" : "border-white/10 hover:border-white/25"}`}
                     >
@@ -319,6 +364,9 @@ export function BookingDrawer({
                         <Zap size={18} className="text-emerald-300" />
                         <span className="text-[10px] text-slate-400">
                           {c.connector}
+                          {station.estimates?.chargers && (
+                            <EstimateTag title={estimateText.chargers} />
+                          )}
                         </span>
                       </div>
                       <p className="text-sm font-medium">
@@ -334,6 +382,9 @@ export function BookingDrawer({
                       <p className="mt-1.5 text-xs text-emerald-300">
                         {money(c.price)}
                         <span className="text-slate-400"> / kWh</span>
+                        {station.estimates?.price && (
+                          <EstimateTag title={estimateText.price} />
+                        )}
                       </p>
                     </button>
                   ))}
@@ -370,14 +421,18 @@ export function BookingDrawer({
                     }}
                     className="vr-input w-full"
                   >
+                    <option value={10}>10 minutes</option>
+                    <option value={15}>15 minutes</option>
+                    <option value={20}>20 minutes</option>
                     <option value={30}>30 minutes</option>
+                    <option value={45}>45 minutes</option>
                     <option value={60}>60 minutes</option>
                     <option value={90}>90 minutes</option>
                     <option value={120}>120 minutes</option>
                   </select>
                 </label>
               </div>
-              <fieldset disabled={loadingSlots || !!availabilityError || !date}>
+              <fieldset disabled={loadingSlots || !date}>
                 <legend className="mb-3 flex w-full items-center justify-between text-sm font-medium">
                   Pick a time slot
                   <span className="text-[10px] font-normal text-slate-500">
@@ -393,9 +448,16 @@ export function BookingDrawer({
                     Checking availability…
                   </p>
                 ) : availabilityError ? (
-                  <p role="alert" className="text-xs text-rose-200">
-                    {availabilityError}
-                  </p>
+                  <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-rose-300/20 bg-rose-300/[.06] p-3 text-xs text-rose-200">
+                    <span>{availabilityError}</span>
+                    <button
+                      type="button"
+                      onClick={() => setRetryKey((k) => k + 1)}
+                      className="shrink-0 rounded-lg border border-rose-200/30 px-3 py-1.5 font-semibold hover:bg-rose-200/10"
+                    >
+                      Try again
+                    </button>
+                  </div>
                 ) : (
                   <div className="grid grid-cols-4 gap-2">
                     {Array.from(
@@ -412,17 +474,30 @@ export function BookingDrawer({
                           aria-pressed={slot === time}
                           aria-label={`${time}, ${reason || "available"}`}
                           onClick={() => {
+                            // Move to a free charger of the same type if this one is booked then.
+                            if (!isFree(chargerId, time)) {
+                              const free = freeAt(time).sort((a, b) => b.power - a.power)[0];
+                              if (free) setChargerId(free.id);
+                            }
                             setSlot(time);
                             setError(null);
                           }}
                           className={`rounded-lg border px-2 py-2.5 text-xs transition disabled:cursor-not-allowed disabled:border-transparent disabled:bg-white/[.025] disabled:text-slate-600 disabled:line-through ${slot === time ? "border-emerald-300 bg-emerald-300 text-[#14271e]" : "border-white/10 text-slate-300 hover:border-emerald-300/40"}`}
                         >
-                          {time}
+                          <span className="block">{time}</span>
+                          <span className="block text-[9px] opacity-75">
+                            {reason === "Full"
+                              ? "Full"
+                              : reason
+                                ? "—"
+                                : `${freeAt(time).length} of ${group.length} free`}
+                          </span>
                         </button>
                       );
                     })}
                   </div>
                 )}
+                {(!adapters.getBookedSlots || station.estimates?.availability) && <p className="mt-3 text-[10px] text-slate-400">Sample / estimated schedule, including bookings made here. Not live charger occupancy.</p>}
                 <p className="mt-3 flex items-center gap-4 text-[9px] text-slate-500">
                   <span className="flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-sm bg-emerald-300" />
@@ -430,7 +505,7 @@ export function BookingDrawer({
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-sm bg-slate-600" />
-                    Booked / unavailable
+                    Full / unavailable
                   </span>
                 </p>
               </fieldset>
@@ -448,6 +523,7 @@ export function BookingDrawer({
                 <div>
                   <p className="text-xs text-slate-400">
                     Estimated session total
+                    {station.estimates?.price && " · price not confirmed"}
                   </p>
                   <p className="mt-1 text-[10px] text-slate-500">
                     {duration} min · up to {energy.toFixed(1)} kWh
@@ -481,12 +557,12 @@ export function BookingDrawer({
                   ? "Reserving your slot…"
                   : isDemo
                     ? "Confirm demo booking"
-                    : "Confirm booking"}
+                    : "Request booking"}
                 <ArrowRight size={16} className="ml-auto" />
               </button>
               <p className="mt-3 text-center text-[9px] leading-relaxed text-slate-500">
-                Estimate at rated power. Actual cost depends on energy
-                delivered.
+                No payment now. The station reviews your request first.
+                Actual cost depends on energy delivered.
               </p>
             </footer>
           </motion.div>

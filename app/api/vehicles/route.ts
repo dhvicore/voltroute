@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { ensureInit } from "@/lib/init";
 import { v4 as uuid } from "uuid";
+import { parseVehicle } from "@/lib/vehicle-input";
 
 // GET /api/vehicles — list user's vehicles
 export async function GET(req: NextRequest) {
@@ -28,19 +29,16 @@ export async function POST(req: NextRequest) {
   ensureInit();
   try {
     const auth = requireAuth(req);
-    const { make, model, year, battery_capacity_kwh, connector_types, max_charging_power_kw, current_range_km } = await req.json();
-
-    if (!make || !model || !battery_capacity_kwh) {
-      return NextResponse.json({ error: "make, model, and battery_capacity_kwh are required" }, { status: 400 });
-    }
+    const input = parseVehicle(await req.json().catch(() => null));
+    if ("error" in input) return NextResponse.json({ error: input.error }, { status: 400 });
 
     const db = getDb();
     const id = uuid();
     db.prepare(`
-      INSERT INTO vehicles (id, user_id, make, model, year, battery_capacity_kwh, connector_types, max_charging_power_kw, current_range_km)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, auth.userId, make, model, year || null, battery_capacity_kwh,
-      JSON.stringify(connector_types || ["CCS2"]), max_charging_power_kw || 50, current_range_km || null);
+      INSERT INTO vehicles (id, user_id, make, model, battery_capacity_kwh, connector_types, max_charging_power_kw, current_range_km)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, auth.userId, input.make, input.model, input.battery_capacity_kwh,
+      JSON.stringify(input.connector_types), input.max_charging_power_kw, input.current_range_km);
 
     const vehicle = db.prepare("SELECT * FROM vehicles WHERE id = ?").get(id) as any;
     return NextResponse.json({

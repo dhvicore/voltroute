@@ -1,5 +1,5 @@
-import { VoltRoutePlanner } from "@/components/planner/volt-route-planner";
+import { ConnectedPlanner } from "@/components/planner/connected-planner";
 
-export default function MapPage() {
-  return <VoltRoutePlanner />;
+export default function Page() {
+  return <ConnectedPlanner />;
 }

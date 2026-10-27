@@ -753,8 +753,442 @@
   .vr-route-flow { display: none; }
 }
 .vr-route-panel .vr-route-preference > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.vr-route-panel .vr-route-preference > div > label { min-height: 46px; margin-top: 0; padding: 10px; gap: 7px; }
+.vr-route-panel .vr-route-preference > div > label { min-height: 46px; height: 100%; margin: 0; padding: 10px; gap: 7px; box-sizing: border-box; }
 .vr-route-panel .vr-route-preference > div > label > svg { display: none; }
 .vr-route-panel .vr-route-preference > div > label > span > span:first-child { font-size: 10px; white-space: nowrap; }
 .vr-route-panel .vr-route-preference > div > label > span > span:nth-child(2) { display: none; }
 @media (min-width: 1024px) { .vr-workspace { min-height: 0; } }
+.vr-live-map {
+  isolation: isolate;
+  z-index: 0;
+  background: #19231f;
+}
+.vr-live-map .leaflet-container {
+  background: #19231f;
+  font-family: inherit;
+}
+/* Tint the dark basemap toward the VoltRoute greens. */
+.vr-live-map[data-theme-map="dark"] .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) grayscale(0.55) sepia(0.35) hue-rotate(85deg)
+    brightness(0.78) contrast(0.92);
+}
+.vr-live-map[data-theme-map="light"],
+.vr-live-map[data-theme-map="light"] .leaflet-container {
+  background: #eef3ef;
+}
+.vr-live-map[data-theme-map="light"] .leaflet-tile-pane {
+  filter: grayscale(0.45) sepia(0.2) hue-rotate(80deg) brightness(1.04);
+}
+.vr-live-cluster {
+  padding: 5px 9px 5px 5px;
+}
+.vr-live-cluster-count {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--marker-color) 22%, transparent);
+  font-size: 12px;
+  font-weight: 700;
+}
+.vr-live-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 400;
+  pointer-events: none;
+  background: linear-gradient(180deg, #142019d9, transparent 26%, transparent 78%, #111c1750);
+}
+.vr-live-map[data-theme-map="light"] .vr-live-shade {
+  background: linear-gradient(180deg, #f4f8f5e6, transparent 26%);
+}
+.vr-live-title {
+  color: #e6eee8;
+}
+.vr-live-subtitle {
+  color: #8b9c91;
+}
+.vr-live-map[data-theme-map="light"] .vr-live-title {
+  color: #122a23;
+}
+.vr-live-map[data-theme-map="light"] .vr-live-subtitle {
+  color: #4f6a5d;
+}
+.vr-live-map[data-theme-map="light"] .vr-live-eyebrow {
+  color: #2f7a55;
+}
+.vr-live-controls,
+.vr-live-legend {
+  background: #18231ff2;
+  border-color: #ffffff1a;
+  color: #cbd5d0;
+}
+.vr-live-map[data-theme-map="light"] .vr-live-controls,
+.vr-live-map[data-theme-map="light"] .vr-live-legend {
+  background: #fffffff2;
+  border-color: #c9d6ce;
+  color: #2c4339;
+}
+.vr-live-map[data-theme-map="light"] .vr-map-control {
+  color: #2c4339;
+}
+.vr-live-map .leaflet-control-attribution {
+  background: transparent;
+  color: #6f8279;
+  font-size: 9px;
+}
+.vr-live-map .leaflet-control-attribution a {
+  color: inherit;
+}
+.vr-live-glow {
+  filter: blur(6px);
+}
+.vr-live-draw {
+  stroke-dasharray: 4000;
+  stroke-dashoffset: 4000;
+  animation: vr-live-draw 1.6s ease-in-out forwards;
+}
+.vr-live-flow {
+  animation: vr-live-flow 1.4s linear infinite;
+}
+@keyframes vr-live-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes vr-live-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+.vr-live-marker .vr-station-marker {
+  left: 0;
+  top: -6px;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+  animation: vr-live-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.vr-live-marker:hover .vr-station-marker,
+.vr-live-marker:focus .vr-station-marker {
+  transform: translate(-50%, -100%) translateY(-3px) scale(1.06);
+}
+@keyframes vr-live-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(0.6);
+  }
+}
+.vr-live-rec {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: #6ee7b7;
+}
+.vr-live-rec-name {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #f1f5f9;
+}
+.vr-live-rec-name span {
+  margin-left: 8px;
+  color: #6ee7b7;
+}
+.vr-live-saved {
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.vr-live-end {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  display: block;
+  border-radius: 50%;
+}
+.vr-live-end.is-start {
+  width: 22px;
+  height: 22px;
+  border: 5px solid #244a39;
+  background: #a7f3d0;
+  box-shadow: 0 0 0 9px #8be4b81f;
+  animation: vr-live-pulse 2.4s ease-out infinite;
+}
+.vr-live-end.is-end {
+  width: 24px;
+  height: 24px;
+  border: 4px solid #293b32;
+  background: #f1f5f9;
+}
+.vr-live-end-label {
+  position: absolute;
+  left: 0;
+  top: 18px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  text-shadow: 0 2px 6px #0b1410;
+}
+.vr-live-map[data-theme-map="light"] .vr-live-end-label {
+  color: #122a23;
+  text-shadow: 0 1px 4px #ffffff;
+}
+@keyframes vr-live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 #8be4b866;
+  }
+  100% {
+    box-shadow: 0 0 0 16px #8be4b800;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vr-live-draw,
+  .vr-live-flow,
+  .vr-live-end.is-start,
+  .vr-live-marker .vr-station-marker {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+.vr-estimate-tag {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px dashed #efc67999;
+  color: #efc679;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  cursor: help;
+  vertical-align: middle;
+}
+[data-theme="light"] .vr-estimate-tag {
+  border-color: #b7791f99;
+  color: #9a5b13;
+}
+.vr-live-stats {
+  position: absolute;
+  left: 24px;
+  right: 80px;
+  top: 128px;
+  z-index: 500;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: none;
+}
+.vr-live-stats > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border-radius: 10px;
+  background: #18231ff2;
+  border: 1px solid #ffffff14;
+  color: #cbd5d0;
+  font-size: 12px;
+  box-shadow: 0 6px 18px #0000002e;
+  backdrop-filter: blur(12px);
+  animation: vr-live-chip 0.35s ease both;
+}
+.vr-live-stats > span svg {
+  color: #8be4b8;
+}
+.vr-live-stats strong {
+  color: #f1f5f9;
+  font-weight: 600;
+}
+.vr-live-stats small {
+  color: #8b9c91;
+  font-size: 11px;
+}
+.vr-live-stats-stop {
+  border-color: #8be4b855 !important;
+}
+.vr-live-map[data-theme-map="light"] .vr-live-stats > span {
+  background: #fffffff2;
+  border-color: #c9d6ce;
+  color: #2c4339;
+}
+.vr-live-map[data-theme-map="light"] .vr-live-stats strong {
+  color: #122a23;
+}
+.vr-live-map[data-theme-map="light"] .vr-live-stats > span svg {
+  color: #2f7a55;
+}
+@keyframes vr-live-chip {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@media (max-width: 640px) {
+  .vr-live-stats {
+    top: 124px;
+    left: 14px;
+    right: 14px;
+  }
+}
+/* Keep overlays above Leaflet's panes (the original map caps them at z-index 3). */
+.vr-map.vr-live-map > div:not(:first-child) {
+  z-index: 500;
+}
+.vr-map.vr-live-map > .vr-live-shade {
+  z-index: 400;
+}
+/* Demo checkout shown after a booking request. */
+.vr-pay {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgb(139 228 184 / 0.25);
+  background: rgb(139 228 184 / 0.05);
+  text-align: left;
+}
+.vr-pay-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #a9bbb0;
+}
+.vr-pay-head strong {
+  font-size: 22px;
+  color: #e6eee8;
+}
+.vr-pay-methods {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.vr-pay-methods button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  font-size: 12px;
+  color: #cbd5d0;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.vr-pay-methods button:hover {
+  border-color: rgb(139 228 184 / 0.4);
+}
+.vr-pay-methods button.active {
+  border-color: #8be4b8;
+  background: rgb(139 228 184 / 0.12);
+  color: #e6eee8;
+}
+.vr-pay-note {
+  font-size: 10px;
+  color: #74877c;
+  text-align: center;
+}
+.vr-pay-done {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #8be4b8;
+}
+.vr-pay-done div {
+  display: grid;
+  gap: 3px;
+}
+.vr-pay-done strong {
+  font-size: 14px;
+  color: #e6eee8;
+}
+.vr-pay-done span {
+  font-size: 11px;
+  color: #a9bbb0;
+}
+.vr-secondary-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5d0;
+  transition: border-color 0.2s ease;
+}
+.vr-secondary-button:hover {
+  border-color: rgb(139 228 184 / 0.45);
+}
+[data-theme="light"] .vr-pay-head strong,
+[data-theme="light"] .vr-pay-done strong,
+[data-theme="light"] .vr-pay-methods button.active {
+  color: #122a23;
+}
+[data-theme="light"] .vr-pay-methods button,
+[data-theme="light"] .vr-secondary-button {
+  border-color: #c9d6ce;
+  color: #2c4339;
+}
+/* Keep the checkout inside the card on narrow screens. */
+.vr-pay {
+  min-width: 0;
+  overflow: hidden;
+}
+.vr-pay-head {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.vr-pay-methods {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.vr-pay-methods button {
+  min-width: 0;
+  padding: 10px 4px;
+  white-space: nowrap;
+}
+@media (max-width: 380px) {
+  .vr-pay-methods button svg {
+    display: none;
+  }
+}
+
+.vr-feedback { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--surface-input); }
+.vr-feedback-heading { display: flex; align-items: center; gap: 10px; width: 100%; padding: 15px; color: var(--foreground); font-size: 13px; text-align: left; }
+.vr-feedback-heading span { flex: 1; }
+.vr-feedback-content { padding: 0 15px 15px; color: var(--secondary); font-size: 12px; }
+.vr-feedback-summary { margin-bottom: 16px; }
+.vr-feedback-summary a { color: var(--accent); text-decoration: underline; }
+.vr-feedback form { display: grid; gap: 12px; }
+.vr-feedback fieldset { min-width: 0; }
+.vr-feedback legend, .vr-feedback label { display: block; color: var(--foreground); margin-bottom: 8px; font-size: 12px; }
+.vr-feedback label span { color: var(--quiet); }
+.vr-feedback-stars { display: flex; gap: 4px; margin-bottom: 16px; color: var(--accent); }
+.vr-feedback-stars button { padding: 8px; border-radius: 9px; }
+.vr-feedback-stars button:hover { background: var(--ambient); }
+.vr-feedback textarea { display: block; width: 100%; resize: vertical; border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: var(--surface-deep); color: var(--foreground); }
+.vr-feedback textarea:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vr-feedback small { display: block; color: var(--quiet); font-size: 10px; margin-top: 6px; }
+.vr-feedback [role="alert"] { color: #e89c95; margin-top: 12px; }
+.vr-feedback [role="status"] { color: var(--accent); margin-top: 12px; }
+.vr-feedback ul { display: grid; gap: 12px; margin-top: 18px; }
+.vr-feedback li { border-top: 1px solid var(--line); padding-top: 12px; }
+.vr-feedback li > div { display: flex; justify-content: space-between; gap: 12px; color: var(--foreground); }
+.vr-feedback li p { margin-top: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }

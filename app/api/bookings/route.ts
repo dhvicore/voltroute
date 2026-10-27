@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { ensureInit } from "@/lib/init";
+import { isStationOperator } from "@/lib/planner-stations";
+import { formatSlot, notify, notifyStation } from "@/lib/notify";
+import { sampleBusySlots, usesSampleSchedule } from "@/lib/sample-availability";
 import { v4 as uuid } from "uuid";
 
 // GET /api/bookings — list current user's bookings
@@ -43,6 +46,9 @@ export async function POST(req: NextRequest) {
   ensureInit();
   try {
     const auth = requireAuth(req);
+    if (auth.role !== "admin" && isStationOperator(auth.userId, auth.role)) {
+      return NextResponse.json({ error: "Station provider accounts can view bookings but not make them. Log in as an EV driver to book." }, { status: 403 });
+    }
     let body: unknown;
     try {
       body = await req.json();
@@ -93,7 +99,7 @@ export async function POST(req: NextRequest) {
 
     const db = getDb();
 
-    const station = db.prepare("SELECT is_enabled FROM stations WHERE id = ?").get(station_id) as { is_enabled: number } | undefined;
+    const station = db.prepare("SELECT is_enabled, chargers_estimated, operator_verified, live_source FROM stations WHERE id = ?").get(station_id) as { is_enabled: number; chargers_estimated: number; operator_verified: number; live_source: string | null } | undefined;
     if (!station) return NextResponse.json({ error: "Station not found" }, { status: 404 });
     if (!station.is_enabled) return NextResponse.json({ error: "This station is not accepting bookings" }, { status: 400 });
 
@@ -115,6 +121,10 @@ export async function POST(req: NextRequest) {
     const endMins = endMinutes % 60;
     const end_time = `${String(endHours).padStart(2, "0")}:${String(endMins).padStart(2, "0")}`;
 
+    if (usesSampleSchedule(station) && sampleBusySlots(charger_id, booking_date).some(
+      (slot) => start_time < slot.end_time && end_time > slot.start_time,
+    )) return NextResponse.json({ error: "This sample slot is full. Please choose another time." }, { status: 409 });
+
     // Check for overlapping bookings
     const overlap = db.prepare(`
       SELECT id FROM bookings
@@ -127,14 +137,27 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculate estimated cost
-    const energyKwh = Math.round((charger.power_kw * duration_minutes / 60) * 10) / 10;
+    // Energy is limited by the slower of charger and car, and by how much the battery can still take.
+    const arrival = Number((body as Record<string, any>).arrival_battery);
+    const arrivalBattery = Number.isFinite(arrival) && arrival >= 0 && arrival <= 100 ? arrival : 20;
+    const car = vehicle_id
+      ? (db.prepare("SELECT battery_capacity_kwh, max_charging_power_kw FROM vehicles WHERE id = ? AND user_id = ?").get(vehicle_id, auth.userId) as
+          | { battery_capacity_kwh: number; max_charging_power_kw: number | null }
+          | undefined)
+      : undefined;
+    const carKw = car ? (charger.charging_type === "AC" ? 7.2 : car.max_charging_power_kw || 7.2) : charger.power_kw;
+    const energyKwh = Math.round(Math.min((Math.min(charger.power_kw, carKw) * duration_minutes) / 60, car ? (car.battery_capacity_kwh * (100 - arrivalBattery)) / 100 : Infinity) * 10) / 10;
     const estimated_cost = Math.round((energyKwh * charger.price_per_kwh + charger.session_fee) * 100) / 100;
 
     const id = uuid();
     db.prepare(`
-      INSERT INTO bookings (id, user_id, station_id, charger_id, vehicle_id, booking_date, start_time, end_time, duration_minutes, estimated_cost)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, auth.userId, station_id, charger_id, vehicle_id || null, booking_date, start_time, end_time, duration_minutes, estimated_cost);
+      INSERT INTO bookings (id, user_id, station_id, charger_id, vehicle_id, booking_date, start_time, end_time, duration_minutes, estimated_cost, deposit_amount)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, auth.userId, station_id, charger_id, vehicle_id || null, booking_date, start_time, end_time, duration_minutes, estimated_cost, Math.round(estimated_cost));
+
+    const who = db.prepare("SELECT u.name, s.name as station FROM users u, stations s WHERE u.id = ? AND s.id = ?").get(auth.userId, station_id) as { name: string; station: string };
+    notifyStation(station_id, "request", "New booking request", `${who.name} requested ${formatSlot(booking_date, start_time)} (${duration_minutes} min). Accept or decline it.`);
+    notify(auth.userId, "request", "Request sent", `Waiting for ${who.station} to accept ${formatSlot(booking_date, start_time)}. No payment is needed while your request is pending.`, "/profile#bookings");
 
     const booking = db.prepare(`
       SELECT b.*, s.name as station_name, c.connector_type, c.power_kw

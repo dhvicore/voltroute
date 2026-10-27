@@ -16,3 +16,21 @@ body {
 }
 
 /* The React planner is scoped so the original app stays available at /legacy. */
+
+/* Dropdown menus follow the theme so their options are always readable. */
+[data-theme="dark"] select {
+  color-scheme: dark;
+}
+[data-theme="dark"] select option,
+[data-theme="dark"] select optgroup {
+  background-color: #0f1a16;
+  color: #e6eee8;
+}
+[data-theme="light"] select {
+  color-scheme: light;
+}
+[data-theme="light"] select option,
+[data-theme="light"] select optgroup {
+  background-color: #ffffff;
+  color: #122a23;
+}

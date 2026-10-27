@@ -43,7 +43,7 @@ export function RouteSummary({
               Route overview
             </span>
             <span className="mt-1 block text-[11px] text-slate-400">
-              {expanded ? `${route.stations.length} compatible stations along the way` : `${route.distance} km · ${duration(route.driveMinutes + route.chargeMinutes)} · ${route.arrivalBattery}% arrival`}
+              {expanded ? `${route.stations.length} compatible stations along the way` : `${route.distance} km · ${duration(route.driveMinutes)} driving · ${route.arrivalBattery}% arrival`}
             </span>
           </span>
         </span>
@@ -76,10 +76,10 @@ export function RouteSummary({
             <div className="border-x border-white/[.07] px-3">
               <p className="mb-1.5 flex items-center gap-1.5 text-[10px] text-slate-400">
                 <Clock3 size={12} />
-                Duration
+                Driving time
               </p>
               <p className="whitespace-nowrap text-xl font-semibold tracking-tight">
-                {duration(route.driveMinutes + route.chargeMinutes)}
+                {duration(route.driveMinutes)}
               </p>
             </div>
             <div>
@@ -94,6 +94,12 @@ export function RouteSummary({
               </p>
             </div>
           </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400">
+            <span>{route.liveTraffic ? "Live traffic" : "Driving estimate · live traffic unavailable"}</span>
+            <span>Trip total: {duration(route.driveMinutes + route.chargeMinutes + (route.detourMinutes || 0))}</span>
+            {(route.detourMinutes || 0) > 0 && <span>Includes ~{route.detourMinutes} min charging detours</span>}
+          </div>
+          {route.chargingNote && <p className="mt-3 text-[10px] leading-relaxed text-amber-200">{route.chargingNote}</p>}
           <div className="mb-4 mt-4 flex items-center justify-between">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
               Charging stops
@@ -129,11 +135,14 @@ export function RouteSummary({
                     <Zap size={13} fill="currentColor" />
                   </span>
                   <p className="mt-2 text-[11px] font-medium text-emerald-200">
-                    {station.name.split(" · ")[1] || station.name}
+                    {station.name.split(" · ")[1] || station.name.split(" - ")[0]}
                   </p>
                   <p className="mt-1 text-[9px] text-slate-400">
                     {stop.batteryOnArrival}% → {stop.targetBattery}% ·{" "}
                     {stop.minutes} min
+                  </p>
+                  <p className={`mt-1 text-[9px] font-semibold ${stop.booked ? "text-emerald-300" : "text-amber-200/80"}`}>
+                    {stop.booked ? "✓ Booked" : "Tap to book"}
                   </p>
                 </button>
               );

@@ -5,9 +5,10 @@ import {
   Star,
   Zap,
 } from "lucide-react";
-import { availabilityLabel, availabilityStyle, money } from "./demo-data";
+import { availabilityStyle, money } from "./demo-data";
 import type { Connector, Station } from "./types";
 import { DepthCard } from "./depth-card";
+import { EstimateTag, estimateText } from "./estimate-tag";
 
 export function StationCard({
   station,
@@ -32,8 +33,10 @@ export function StationCard({
           className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[9px] font-semibold ${availabilityStyle[station.availability]}`}
         >
           <span className="h-1.5 w-1.5 rounded-full bg-current" />
-          {availabilityLabel[station.availability]} · {station.available}/
-          {station.total}
+          {station.available} of {station.total} free now
+          {station.estimates?.availability && (
+            <EstimateTag title={estimateText.availability} />
+          )}
         </span>
         <button
           aria-label={`${saved ? "Unsave" : "Save"} ${station.name}`}
@@ -62,16 +65,24 @@ export function StationCard({
           <span className="flex items-center gap-1">
             <Zap size={12} className="text-emerald-300" />
             {charger.power} kW
+            {station.estimates?.chargers && (
+              <EstimateTag title={estimateText.chargers} />
+            )}
           </span>
           <span className="text-slate-600">|</span>
           <span>
             {money(charger.price)}
             <span className="text-slate-500">/kWh</span>
+            {station.estimates?.price && (
+              <EstimateTag title={estimateText.price} />
+            )}
           </span>
-          <span className="ml-auto flex items-center gap-1">
-            <Star size={10} fill="currentColor" className="text-amber-200" />
-            {station.rating}
-          </span>
+          {station.rating > 0 && (
+            <span className="ml-auto flex items-center gap-1">
+              <Star size={10} fill="currentColor" className="text-amber-200" />
+              {station.rating}
+            </span>
+          )}
         </div>
       </button>
     </DepthCard>
