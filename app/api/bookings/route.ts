@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
+import { validateBookingSlot } from "@/lib/booking-slot";
 import { getDb } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { ensureInit } from "@/lib/init";
@@ -71,31 +72,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Vehicle ID must be a non-empty string when provided" }, { status: 400 });
     }
 
-    if (typeof duration_minutes !== "number" || !Number.isInteger(duration_minutes) || duration_minutes < 10 || duration_minutes > 120) {
-      return NextResponse.json({ error: "Duration must be a whole number between 10 and 120 minutes" }, { status: 400 });
-    }
-
-    if (typeof booking_date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(booking_date)) {
-      return NextResponse.json({ error: "Booking date must use YYYY-MM-DD format" }, { status: 400 });
-    }
-    const calendarDate = new Date(`${booking_date}T00:00:00Z`);
-    if (!Number.isFinite(calendarDate.getTime()) || calendarDate.toISOString().slice(0, 10) !== booking_date) {
-      return NextResponse.json({ error: "Booking date must be a valid calendar date" }, { status: 400 });
-    }
-    if (typeof start_time !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start_time)) {
-      return NextResponse.json({ error: "Start time must be a valid 24-hour time in HH:mm format" }, { status: 400 });
-    }
-    // The application's charging stations use India Standard Time.
-    const startsAt = new Date(`${booking_date}T${start_time}:00+05:30`);
-    if (startsAt.getTime() <= Date.now()) {
-      return NextResponse.json({ error: "Bookings must start in the future" }, { status: 400 });
-    }
-    const [hours, mins] = start_time.split(":").map(Number);
-    const startMinutes = hours * 60 + mins;
-    const endMinutes = startMinutes + duration_minutes;
-    if (endMinutes >= 24 * 60) {
-      return NextResponse.json({ error: "A booking must finish before midnight on the selected date" }, { status: 400 });
-    }
+    const slot = validateBookingSlot(booking_date, start_time, duration_minutes);
+    if ("error" in slot)
+      return NextResponse.json({ error: slot.error }, { status: 400 });
+    const { end_time } = slot;
 
     const db = getDb();
 
@@ -115,11 +95,6 @@ export async function POST(req: NextRequest) {
     if (charger.status === "out_of_service") {
       return NextResponse.json({ error: "Charger is out of service" }, { status: 400 });
     }
-
-    // Calculate end time
-    const endHours = Math.floor(endMinutes / 60);
-    const endMins = endMinutes % 60;
-    const end_time = `${String(endHours).padStart(2, "0")}:${String(endMins).padStart(2, "0")}`;
 
     if (usesSampleSchedule(station) && sampleBusySlots(charger_id, booking_date).some(
       (slot) => start_time < slot.end_time && end_time > slot.start_time,
