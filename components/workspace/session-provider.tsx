@@ -61,7 +61,7 @@ export async function apiRequest<T = any>(
     .catch(() => ({
       error: "The service is temporarily unavailable. Please try again.",
     }));
-  if (response.status === 401) {
+  if (response.status === 401 && !path.startsWith("/api/auth/")) {
     // The login has expired: drop any stale token and send the user to log in again.
     if (typeof window !== "undefined") {
       localStorage.removeItem("vr_token");
