@@ -11,6 +11,8 @@ function load(file) {
   const module = { exports: {} };
   const code = ts.transpileModule(fs.readFileSync(file,'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
   vm.runInNewContext(code, {exports:module.exports,require(name){
+    if(name==='@/lib/booking-slot') return load('lib/booking-slot.ts');
+    if(name==='@/lib/booking-cost') return load('lib/booking-cost.ts');
     if(name==='@/lib/db') return {getDb:()=>db};
     if(name==='@/lib/auth') return {requireAuth:()=>({userId,role})};
     if(name==='@/lib/init') return {ensureInit(){}};

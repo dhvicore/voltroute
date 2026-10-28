@@ -1,0 +1,24 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const ts = require('typescript');
+const source = fs.readFileSync(path.join(__dirname, '../lib/booking-cost.ts'), 'utf8');
+const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+const context = { exports: {} };
+vm.runInNewContext(compiled, context);
+const { estimateBookingCost: estimate } = context.exports;
+const charger = { power_kw: 100, charging_type: 'DC', price_per_kwh: 18, session_fee: 5 };
+const vehicle = { battery_capacity_kwh: 40, max_charging_power_kw: 50 };
+assert.equal(estimate(charger, 30, vehicle, 20).energyKwh, 25);
+assert.equal(estimate(charger, 60, vehicle, 90).energyKwh, 4);
+assert.equal(estimate(charger, 60, vehicle, 100).estimatedCost, 5);
+assert.equal(estimate({ ...charger, power_kw: 20 }, 30, vehicle, 20).energyKwh, 10);
+assert.equal(estimate({ ...charger, charging_type: 'AC' }, 60, vehicle, 20).energyKwh, 7.2);
+assert.equal(estimate(charger, 30).energyKwh, 50);
+for (const reading of [undefined, null, '', 'invalid', {}, -1, 101, NaN])
+  assert.equal(estimate(charger, 120, vehicle, reading).energyKwh, 32);
+const price = estimate({ ...charger, price_per_kwh: 18.37 }, 10, vehicle, 20);
+assert.equal(price.estimatedCost, 157.47);
+assert.equal(price.depositAmount, 157);
+console.log('PASS: booking estimates respect car/charger limits, battery capacity, AC power, missing readings and rounding.');

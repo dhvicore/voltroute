@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
+import { estimateBookingCost } from "@/lib/booking-cost";
 import { validateBookingSlot } from "@/lib/booking-slot";
 import { getDb } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
@@ -113,22 +114,20 @@ export async function POST(req: NextRequest) {
 
     // Calculate estimated cost
     // Energy is limited by the slower of charger and car, and by how much the battery can still take.
-    const arrival = Number((body as Record<string, any>).arrival_battery);
-    const arrivalBattery = Number.isFinite(arrival) && arrival >= 0 && arrival <= 100 ? arrival : 20;
     const car = vehicle_id
       ? (db.prepare("SELECT battery_capacity_kwh, max_charging_power_kw FROM vehicles WHERE id = ? AND user_id = ?").get(vehicle_id, auth.userId) as
           | { battery_capacity_kwh: number; max_charging_power_kw: number | null }
           | undefined)
       : undefined;
-    const carKw = car ? (charger.charging_type === "AC" ? 7.2 : car.max_charging_power_kw || 7.2) : charger.power_kw;
-    const energyKwh = Math.round(Math.min((Math.min(charger.power_kw, carKw) * duration_minutes) / 60, car ? (car.battery_capacity_kwh * (100 - arrivalBattery)) / 100 : Infinity) * 10) / 10;
-    const estimated_cost = Math.round((energyKwh * charger.price_per_kwh + charger.session_fee) * 100) / 100;
+    const { estimatedCost: estimated_cost, depositAmount } = estimateBookingCost(
+      charger, duration_minutes, car, (body as Record<string, any>).arrival_battery,
+    );
 
     const id = uuid();
     db.prepare(`
       INSERT INTO bookings (id, user_id, station_id, charger_id, vehicle_id, booking_date, start_time, end_time, duration_minutes, estimated_cost, deposit_amount)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, auth.userId, station_id, charger_id, vehicle_id || null, booking_date, start_time, end_time, duration_minutes, estimated_cost, Math.round(estimated_cost));
+    `).run(id, auth.userId, station_id, charger_id, vehicle_id || null, booking_date, start_time, end_time, duration_minutes, estimated_cost, depositAmount);
 
     const who = db.prepare("SELECT u.name, s.name as station FROM users u, stations s WHERE u.id = ? AND s.id = ?").get(auth.userId, station_id) as { name: string; station: string };
     notifyStation(station_id, "request", "New booking request", `${who.name} requested ${formatSlot(booking_date, start_time)} (${duration_minutes} min). Accept or decline it.`);
